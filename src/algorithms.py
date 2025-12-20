@@ -156,9 +156,8 @@ class ProjectionMethod(OptimizationAlgorithm):
     Requires strong monotonicity for convergence.
     """
     
-    def __init__(self, step_size: float = 0.1, proj = None):
+    def __init__(self, proj = None):
         super().__init__("Projection Method", proj=proj)
-        self.step_size = step_size
     
     def solve(
         self,
@@ -169,6 +168,9 @@ class ProjectionMethod(OptimizationAlgorithm):
         **kwargs
     ) -> OptimizationResult:
         start_time = time.time()
+
+        L = problem.L
+        a = 1 / (2 * L)
         
         x_k = x0.copy()
         x_star = problem.get_exact_solution()
@@ -182,9 +184,9 @@ class ProjectionMethod(OptimizationAlgorithm):
             F_k = problem.operator(x_k)
             # Update: x_{k+1} = proj(x_k - a F(x_k))
             if self.proj is not None:
-                x_k = self.proj(x_k - self.step_size * F_k, **kwargs)
+                x_k = self.proj(x_k - a * F_k, **kwargs)
             else:
-                x_k = x_k - self.step_size * F_k
+                x_k = x_k - a * F_k
             
             x_history.append(x_k.copy())
             error = self._compute_convergence_error(x_k, x_star)
@@ -205,7 +207,7 @@ class ProjectionMethod(OptimizationAlgorithm):
             final_solution=x_k,
             computation_time=computation_time,
             converged=converged,
-            parameters={"step_size": self.step_size}
+            parameters={"step_size": a}
         )
 
 
@@ -220,9 +222,8 @@ class ExtragradientMethod(OptimizationAlgorithm):
     Requires only monotonicity and Lipschitz continuity.
     """
     
-    def __init__(self, step_size: float = 0.1, proj = None):
+    def __init__(self, proj = None):
         super().__init__("Extragradient Method", proj=proj)
-        self.step_size = step_size
     
     def solve(
         self,
@@ -233,74 +234,9 @@ class ExtragradientMethod(OptimizationAlgorithm):
         **kwargs
     ) -> OptimizationResult:
         start_time = time.time()
-        
-        x_k = x0.copy()
-        x_star = problem.get_exact_solution()
-        
-        x_history = [x_k.copy()]
-        convergence_errors = [self._compute_convergence_error(x_k, x_star)]
-        
-        converged = False
-        
-        for k in range(max_iterations):
-            F_k = problem.operator(x_k)
-            if self.proj is not None:
-                y_k = self.proj(x_k - self.step_size * F_k, **kwargs)
-            else:
-                y_k = x_k - self.step_size * F_k
-            
-            F_y = problem.operator(y_k)
-            if self.proj is not None:
-                x_k = self.proj(x_k - self.step_size * F_y, **kwargs)
-            else:
-                x_k = x_k - self.step_size * F_y
-            
-            x_history.append(x_k.copy())
-            error = self._compute_convergence_error(x_k, x_star)
-            convergence_errors.append(error)
-            
-            if error < eps:
-                converged = True
-                break
-        
-        computation_time = time.time() - start_time
-        
-        return OptimizationResult(
-            algorithm_name=self.name,
-            problem_name=problem.get_name(),
-            x_history=x_history,
-            iterations=len(x_history) - 1,
-            convergence_errors=convergence_errors,
-            final_solution=x_k,
-            computation_time=computation_time,
-            converged=converged,
-            parameters={"step_size": self.step_size}
-        )
 
-class ExtragradientMethod(OptimizationAlgorithm):
-    """
-    Extragradient method (Korpelevich, 1976).
-    
-    Two-step update:
-    1) y_k = proj(x_k - a F(x_k))
-    2) x_{k+1} = proj(x_k - a F(y_k))
-    
-    Requires only monotonicity and Lipschitz continuity.
-    """
-    
-    def __init__(self, step_size: float = 0.1, proj = None):
-        super().__init__("Extragradient Method", proj=proj)
-        self.step_size = step_size
-    
-    def solve(
-        self,
-        problem: OptimizationProblem,
-        x0: np.ndarray,
-        max_iterations: int = 1000,
-        eps: float = 1e-6,
-        **kwargs
-    ) -> OptimizationResult:
-        start_time = time.time()
+        L = problem.L
+        a = 1 / (2 * L)
         
         x_k = x0.copy()
         x_star = problem.get_exact_solution()
@@ -313,15 +249,15 @@ class ExtragradientMethod(OptimizationAlgorithm):
         for k in range(max_iterations):
             F_k = problem.operator(x_k)
             if self.proj is not None:
-                y_k = self.proj(x_k - self.step_size * F_k, **kwargs)
+                y_k = self.proj(x_k - a * F_k, **kwargs)
             else:
-                y_k = x_k - self.step_size * F_k
+                y_k = x_k - a * F_k
             
             F_y = problem.operator(y_k)
             if self.proj is not None:
-                x_k = self.proj(x_k - self.step_size * F_y, **kwargs)
+                x_k = self.proj(x_k - a * F_y, **kwargs)
             else:
-                x_k = x_k - self.step_size * F_y
+                x_k = x_k - a * F_y
             
             x_history.append(x_k.copy())
             error = self._compute_convergence_error(x_k, x_star)
@@ -342,7 +278,7 @@ class ExtragradientMethod(OptimizationAlgorithm):
             final_solution=x_k,
             computation_time=computation_time,
             converged=converged,
-            parameters={"step_size": self.step_size}
+            parameters={"step_size": a}
         )
     
 class ExtragradientMethodWithRestarts(OptimizationAlgorithm):
@@ -356,9 +292,8 @@ class ExtragradientMethodWithRestarts(OptimizationAlgorithm):
     Requires Lipschitz continuity and known strong convexity parameter μ.
     """
 
-    def __init__(self, step_size: float = 0.1, proj=None):
+    def __init__(self, proj=None):
         super().__init__("Extragradient Method With Restarts", proj=proj)
-        self.step_size = step_size
 
     def solve(
         self,
@@ -383,7 +318,7 @@ class ExtragradientMethodWithRestarts(OptimizationAlgorithm):
 
         N_restart = int(np.ceil(L / mu))
 
-        a = 1/L
+        a = 1 / (2 * L)
 
         total_iterations = 0
 

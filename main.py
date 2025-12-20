@@ -5,11 +5,13 @@ from src.problems import (
     SimpleVIProblem,
     BilinearSaddlePointProblem,
     OptimizationProblem,
-    OptimizationResult
+    OptimizationResult,
+    create_random_affine_problem
 )
 from src.algorithms import (
     ProjectionMethod,
     ExtragradientMethod,
+    ExtragradientMethodWithRestarts,
     OptimizationAlgorithm,
     ball_projection,
     product_simplex_projection
