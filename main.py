@@ -10,7 +10,9 @@ from src.problems import (
 from src.algorithms import (
     ProjectionMethod,
     ExtragradientMethod,
-    OptimizationAlgorithm
+    OptimizationAlgorithm,
+    ball_projection,
+    product_simplex_projection
 )
 from src.visualization import (
     plot_convergence,
@@ -84,8 +86,8 @@ def experiment_simple_vi(dimension: int = 10):
     problem = SimpleVIProblem(dimension=dimension)
     
     algorithms = [
-        ProjectionMethod(step_size=0.1),
-        ExtragradientMethod(step_size=0.1)
+        ProjectionMethod(step_size=0.1, proj=ball_projection),
+        ExtragradientMethod(step_size=0.1, proj=ball_projection)
     ]
     
     x0 = np.ones(dimension)
@@ -120,8 +122,8 @@ def experiment_bilinear_saddle_point(dimension: int = 5):
     problem = BilinearSaddlePointProblem(A=A, x_star=np.zeros(2 * dimension))
     
     algorithms = [
-        ProjectionMethod(step_size=0.1),
-        ExtragradientMethod(step_size=0.1),
+        ProjectionMethod(step_size=0.1, proj=product_simplex_projection),
+        ExtragradientMethod(step_size=0.1, proj=product_simplex_projection),
     ]
     
     x0 = np.ones(2 * dimension)
@@ -158,7 +160,7 @@ def main():
     print("="*80)
     
     all_results = [results_exp1, results_exp2]
-    problem_names = ["Simple VI (F(x)=x)", "Bilinear Saddle Point"]
+    problem_names = ["Simple VI (F(x)=x)", "Bilinear Saddle Point Problem"]
     
     plot_convergence_comparison(
         results_list=all_results,
@@ -167,7 +169,7 @@ def main():
     )
     
     print("\n" + "="*80)
-
+    print("END OF EXPERIMENTS")
 
 if __name__ == "__main__":
     main()

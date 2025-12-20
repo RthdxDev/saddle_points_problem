@@ -1,9 +1,79 @@
+from typing import Optional, Callable
 import numpy as np
 from abc import ABC, abstractmethod
 import time
 
-from problems import OptimizationProblem, OptimizationResult
+from src.problems import OptimizationProblem, OptimizationResult
 
+def ball_projection(x: np.ndarray, **kwargs) -> np.ndarray:
+    """
+    Project point x onto the Euclidean ball of given radius.
+    
+    Args:
+        x: Point to project
+        radius: Radius of the ball
+        
+    Returns:
+        Projected point
+    """
+    radius = kwargs.get("radius", 1.0)
+    norm_x = np.linalg.norm(x)
+    if norm_x <= radius:
+        return x
+    else:
+        return (radius / norm_x) * x
+    
+
+def simplex_projection(x: np.ndarray, a = 1.0) -> np.ndarray:
+    """
+    Project point x onto the simplex {y | y >= 0, sum(y) = a}.
+    
+    Args:
+        x: Point to project
+        a: Sum constraint
+        
+    Returns:
+        Projected point
+    """
+    n = len(x)
+    y = np.sort(x)[::-1]
+    
+    K = 1
+    for k in range(1, n + 1):
+        sum_k = np.sum(y[:k])
+        mu_k = (sum_k - a) / k
+        
+        if y[k-1] > mu_k:
+            K = k
+    
+    mu = (np.sum(y[:K]) - a) / K
+    return np.maximum(x - mu, 0)
+
+
+def product_simplex_projection(z: np.ndarray, **kwargs) -> np.ndarray:
+    """
+    Project onto product of simplices: delta_n x delta_n y
+    
+    For bilinear saddle point problem where z = [x; y]:
+    - x ∈ delta_n (first n components)
+    - y ∈ delta_n (last n components)
+    
+    Args:
+        z: Point to project (dimension 2n)
+        a: Sum constraint for each simplex
+        
+    Returns:
+        Projected point [proj_delta_n(x); proj_delta_n(y)]
+    """
+    n = z.shape[0] // 2
+    x = z[:n]
+    y = z[n:]
+    
+    a = kwargs.get("a", 1.0)
+    x_proj = simplex_projection(x, a=a)
+    y_proj = simplex_projection(y, a=a)
+    
+    return np.concatenate([x_proj, y_proj])
 
 class OptimizationAlgorithm(ABC):
     """
@@ -11,7 +81,8 @@ class OptimizationAlgorithm(ABC):
     
     All optimization algorithms must implement the solve() method.
     """
-    def __init__(self, name: str):
+    def __init__(self, name: str, proj = None):
+        self.proj = proj
         self.name = name
     
     @abstractmethod
@@ -21,7 +92,7 @@ class OptimizationAlgorithm(ABC):
         x0: np.ndarray,
         max_iterations: int = 1000,
         eps: float = 1e-6,
-        **kwargs
+        **kwargs: dict
     ) -> OptimizationResult:
         """
         Solve the optimization problem.
@@ -35,19 +106,6 @@ class OptimizationAlgorithm(ABC):
             
         Returns:
             OptimizationResult
-        """
-        pass
-
-    @abstractmethod
-    def proj(self, x: np.ndarray, **kwargs) -> np.ndarray:
-        """
-        Projection operator onto the feasible set.
-        
-        Args:
-            x: Point to project
-            
-        Returns:
-            Projected point
         """
         pass
     
@@ -98,8 +156,8 @@ class ProjectionMethod(OptimizationAlgorithm):
     Requires strong monotonicity for convergence.
     """
     
-    def __init__(self, step_size: float = 0.1):
-        super().__init__("Projection Method")
+    def __init__(self, step_size: float = 0.1, proj = None):
+        super().__init__("Projection Method", proj=proj)
         self.step_size = step_size
     
     def solve(
@@ -122,9 +180,11 @@ class ProjectionMethod(OptimizationAlgorithm):
         
         for k in range(max_iterations):
             F_k = problem.operator(x_k)
-            
             # Update: x_{k+1} = proj(x_k - a F(x_k))
-            x_k = self.proj(x_k - self.step_size * F_k, **kwargs)
+            if self.proj is not None:
+                x_k = self.proj(x_k - self.step_size * F_k, **kwargs)
+            else:
+                x_k = x_k - self.step_size * F_k
             
             x_history.append(x_k.copy())
             error = self._compute_convergence_error(x_k, x_star)
@@ -147,19 +207,6 @@ class ProjectionMethod(OptimizationAlgorithm):
             converged=converged,
             parameters={"step_size": self.step_size}
         )
-    
-    def proj(self, x: np.ndarray, **kwargs) -> np.ndarray:
-        """
-        Projection onto the Euclidian ball.
-        
-        Args:
-            x: Point to project
-            
-        Returns:
-            Projected point
-        """
-        radius = kwargs.get("radius", 1.0)
-        return x / np.linalg.norm(x) if np.linalg.norm(x) > radius else x
 
 
 class ExtragradientMethod(OptimizationAlgorithm):
@@ -173,8 +220,8 @@ class ExtragradientMethod(OptimizationAlgorithm):
     Requires only monotonicity and Lipschitz continuity.
     """
     
-    def __init__(self, step_size: float = 0.1):
-        super().__init__("Extragradient Method")
+    def __init__(self, step_size: float = 0.1, proj = None):
+        super().__init__("Extragradient Method", proj=proj)
         self.step_size = step_size
     
     def solve(
@@ -197,10 +244,16 @@ class ExtragradientMethod(OptimizationAlgorithm):
         
         for k in range(max_iterations):
             F_k = problem.operator(x_k)
-            y_k = self.proj(x_k - self.step_size * F_k, **kwargs)
+            if self.proj is not None:
+                y_k = self.proj(x_k - self.step_size * F_k, **kwargs)
+            else:
+                y_k = x_k - self.step_size * F_k
             
             F_y = problem.operator(y_k)
-            x_k = self.proj(x_k - self.step_size * F_y, **kwargs)
+            if self.proj is not None:
+                x_k = self.proj(x_k - self.step_size * F_y, **kwargs)
+            else:
+                x_k = x_k - self.step_size * F_y
             
             x_history.append(x_k.copy())
             error = self._compute_convergence_error(x_k, x_star)
@@ -223,19 +276,3 @@ class ExtragradientMethod(OptimizationAlgorithm):
             converged=converged,
             parameters={"step_size": self.step_size}
         )
-    
-    def proj(self, x: np.ndarray, **kwargs) -> np.ndarray:
-        a = kwargs.get('radius', 1.0)
-        n = len(x)
-        y = np.sort(x)[::-1]
-        
-        K = 1
-        for k in range(1, n + 1):
-            sum_k = np.sum(y[:k])
-            mu_k = (sum_k - a) / k
-            
-            if y[k-1] > mu_k:
-                K = k
-        
-        mu = (np.sum(y[:K]) - a) / K
-        return np.maximum(x - mu, 0)

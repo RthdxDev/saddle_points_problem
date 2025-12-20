@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from typing import List, Optional
 from tabulate import tabulate
 
-from problems import OptimizationResult
+from src.problems import OptimizationResult
 
 
 def plot_convergence(
