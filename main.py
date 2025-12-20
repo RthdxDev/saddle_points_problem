@@ -87,7 +87,8 @@ def experiment_simple_vi(dimension: int = 10):
     
     algorithms = [
         ProjectionMethod(step_size=0.1, proj=ball_projection),
-        ExtragradientMethod(step_size=0.1, proj=ball_projection)
+        ExtragradientMethod(step_size=0.1, proj=ball_projection),
+        ExtragradientMethodWithRestarts(step_size=0.1, proj=ball_projection)
     ]
     
     x0 = np.ones(dimension)
@@ -124,6 +125,7 @@ def experiment_bilinear_saddle_point(dimension: int = 5):
     algorithms = [
         ProjectionMethod(step_size=0.1, proj=product_simplex_projection),
         ExtragradientMethod(step_size=0.1, proj=product_simplex_projection),
+        ExtragradientMethodWithRestarts(step_size=0.1, proj=product_simplex_projection)
     ]
     
     x0 = np.ones(2 * dimension)
