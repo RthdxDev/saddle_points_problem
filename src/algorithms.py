@@ -276,3 +276,176 @@ class ExtragradientMethod(OptimizationAlgorithm):
             converged=converged,
             parameters={"step_size": self.step_size}
         )
+
+class ExtragradientMethod(OptimizationAlgorithm):
+    """
+    Extragradient method (Korpelevich, 1976).
+    
+    Two-step update:
+    1) y_k = proj(x_k - a F(x_k))
+    2) x_{k+1} = proj(x_k - a F(y_k))
+    
+    Requires only monotonicity and Lipschitz continuity.
+    """
+    
+    def __init__(self, step_size: float = 0.1, proj = None):
+        super().__init__("Extragradient Method", proj=proj)
+        self.step_size = step_size
+    
+    def solve(
+        self,
+        problem: OptimizationProblem,
+        x0: np.ndarray,
+        max_iterations: int = 1000,
+        eps: float = 1e-6,
+        **kwargs
+    ) -> OptimizationResult:
+        start_time = time.time()
+        
+        x_k = x0.copy()
+        x_star = problem.get_exact_solution()
+        
+        x_history = [x_k.copy()]
+        convergence_errors = [self._compute_convergence_error(x_k, x_star)]
+        
+        converged = False
+        
+        for k in range(max_iterations):
+            F_k = problem.operator(x_k)
+            if self.proj is not None:
+                y_k = self.proj(x_k - self.step_size * F_k, **kwargs)
+            else:
+                y_k = x_k - self.step_size * F_k
+            
+            F_y = problem.operator(y_k)
+            if self.proj is not None:
+                x_k = self.proj(x_k - self.step_size * F_y, **kwargs)
+            else:
+                x_k = x_k - self.step_size * F_y
+            
+            x_history.append(x_k.copy())
+            error = self._compute_convergence_error(x_k, x_star)
+            convergence_errors.append(error)
+            
+            if error < eps:
+                converged = True
+                break
+        
+        computation_time = time.time() - start_time
+        
+        return OptimizationResult(
+            algorithm_name=self.name,
+            problem_name=problem.get_name(),
+            x_history=x_history,
+            iterations=len(x_history) - 1,
+            convergence_errors=convergence_errors,
+            final_solution=x_k,
+            computation_time=computation_time,
+            converged=converged,
+            parameters={"step_size": self.step_size}
+        )
+    
+class ExtragradientMethodWithRestarts(OptimizationAlgorithm):
+    """
+    Restarted Averaged Extragradient Method for strongly convex problems.
+
+    Applies the extragradient method in fixed-length blocks.
+    Inside each block, auxiliary points y_k are averaged.
+    Each restart is initialized from the averaged y.
+
+    Requires Lipschitz continuity and known strong convexity parameter μ.
+    """
+
+    def __init__(self, step_size: float = 0.1, proj=None):
+        super().__init__("Extragradient Method With Restarts", proj=proj)
+        self.step_size = step_size
+
+    def solve(
+        self,
+        problem: OptimizationProblem,
+        x0: np.ndarray,
+        max_iterations: int = 1000,
+        eps: float = 1e-6,
+        **kwargs
+    ) -> OptimizationResult:
+        start_time = time.time()
+
+        x_k = x0.copy()
+        x_star = problem.get_exact_solution()
+
+        x_history = [x_k.copy()]
+        convergence_errors = [self._compute_convergence_error(x_k, x_star)]
+
+        converged = False
+
+        L = float(problem.L)
+        mu = float(problem.mu)
+
+        N_restart = int(np.ceil(L / mu))
+
+        a = 1/L
+
+        total_iterations = 0
+
+        while total_iterations < max_iterations:
+            y_sum = np.zeros_like(x_k)
+            inner_steps = 0
+
+            for _ in range(N_restart):
+                if total_iterations >= max_iterations:
+                    break
+
+                F_k = problem.operator(x_k)
+
+                if self.proj is not None:
+                    y_k = self.proj(x_k - a * F_k, **kwargs)
+                else:
+                    y_k = x_k - a * F_k
+
+                F_y = problem.operator(y_k)
+
+                if self.proj is not None:
+                    x_next = self.proj(x_k - a * F_y, **kwargs)
+                else:
+                    x_next = x_k - a * F_y
+
+                x_k = x_next
+                x_history.append(x_k.copy())
+
+                error = self._compute_convergence_error(x_k, x_star)
+                convergence_errors.append(error)
+
+                y_sum += y_k
+                inner_steps += 1
+
+                total_iterations += 1
+
+                if error < eps:
+                    converged = True
+                    break
+
+            if converged or inner_steps == 0:
+                break
+
+            x_k = y_sum / inner_steps
+            x_history.append(x_k.copy())
+            convergence_errors.append(
+                self._compute_convergence_error(x_k, x_star)
+            )
+
+        computation_time = time.time() - start_time
+
+        return OptimizationResult(
+            algorithm_name=self.name,
+            problem_name=problem.get_name(),
+            x_history=x_history,
+            iterations=len(x_history) - 1,
+            convergence_errors=convergence_errors,
+            final_solution=x_k,
+            computation_time=computation_time,
+            converged=converged,
+            parameters={
+                "step_size": a
+            }
+        )
+
