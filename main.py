@@ -81,16 +81,16 @@ def experiment_simple_vi(dimension: int = 10):
     """
     Experiment: Simple VI problem with F(x) = x.
     """
-    print("\n" + "=" * 80)
-    print("Experiment: Simple Variational Inequality: F(x) = x")
-    print("=" * 80)
+    # print("\n" + "=" * 80)
+    # print("Experiment: Simple Variational Inequality: F(x) = x")
+    # print("=" * 80)
     
     problem = SimpleVIProblem(dimension=dimension)
     
     algorithms = [
-        ProjectionMethod(step_size=0.1, proj=ball_projection),
-        ExtragradientMethod(step_size=0.1, proj=ball_projection),
-        ExtragradientMethodWithRestarts(step_size=0.1, proj=ball_projection)
+        ProjectionMethod(proj=ball_projection),
+        ExtragradientMethod(proj=ball_projection),
+        ExtragradientMethodWithRestarts(proj=ball_projection)
     ]
     
     x0 = np.ones(dimension)
@@ -103,10 +103,31 @@ def experiment_simple_vi(dimension: int = 10):
         eps=1e-6,
         verbose=True
     )
-    
-    print_comparison_table(results)
+
     plot_convergence(results, title="Simple VI: F(x) = x")
+    print_comparison_table(results)
     
+    return results
+
+
+def experiment_affine_vi(dimension: int = 5, mu: float = 1, max_iterations: int = 100):
+    problem = create_random_affine_problem(n=dimension, mu=mu, seed=4269)
+    algorithms = [
+        ProjectionMethod(proj=ball_projection),
+        ExtragradientMethod(proj=ball_projection),
+        ExtragradientMethodWithRestarts(proj=ball_projection)
+    ]
+    x0 = np.ones(dimension)
+    results = run_experiment(
+        problem=problem,
+        algorithms=algorithms,
+        x0=x0,
+        max_iterations=max_iterations,
+        eps=1e-6,
+        verbose=True
+    )
+    plot_convergence(results, title="Affine VI Problem")
+    print_comparison_table(results)
     return results
 
 
@@ -125,9 +146,9 @@ def experiment_bilinear_saddle_point(dimension: int = 5):
     problem = BilinearSaddlePointProblem(A=A, x_star=np.zeros(2 * dimension))
     
     algorithms = [
-        ProjectionMethod(step_size=0.1, proj=product_simplex_projection),
-        ExtragradientMethod(step_size=0.1, proj=product_simplex_projection),
-        ExtragradientMethodWithRestarts(step_size=0.1, proj=product_simplex_projection)
+        ProjectionMethod(proj=product_simplex_projection),
+        ExtragradientMethod(proj=product_simplex_projection),
+        ExtragradientMethodWithRestarts(proj=product_simplex_projection)
     ]
     
     x0 = np.ones(2 * dimension)
@@ -141,8 +162,8 @@ def experiment_bilinear_saddle_point(dimension: int = 5):
         verbose=True
     )
     
-    print_comparison_table(results)
     plot_convergence(results, title="Bilinear Saddle Point Problem")
+    print_comparison_table(results)
     
     return results
 
@@ -151,26 +172,27 @@ def main():
     """
     Run all experiments.
     """
-    print("\n" + "="*80)
-    print(" "*20 + "OPTIMIZATION EXPERIMENTS")
-    print("="*80)
-    print("Testing various algorithms on VI and saddle point problems\n")
+    # print("\n" + "="*80)
+    # print(" "*20 + "OPTIMIZATION EXPERIMENTS")
+    # print("="*80)
+    # print("Testing various algorithms on VI and saddle point problems\n")
     
     results_exp1 = experiment_simple_vi()
-    results_exp2 = experiment_bilinear_saddle_point()
+    results_exp2 = experiment_affine_vi(max_iterations=500)
+    # results_exp2 = experiment_bilinear_saddle_point()
     
-    print("\n" + "="*80)
-    print("COMPREHENSIVE SUMMARY")
-    print("="*80)
+    # print("\n" + "="*80)
+    # print("COMPREHENSIVE SUMMARY")
+    # print("="*80)
     
-    all_results = [results_exp1, results_exp2]
-    problem_names = ["Simple VI (F(x)=x)", "Bilinear Saddle Point Problem"]
+    # all_results = [results_exp1]
+    # problem_names = ["Simple VI (F(x)=x)"]
     
-    plot_convergence_comparison(
-        results_list=all_results,
-        problem_names=problem_names,
-        log_scale=True
-    )
+    # plot_convergence_comparison(
+    #     results_list=all_results,
+    #     problem_names=problem_names,
+    #     log_scale=True
+    # )
     
     print("\n" + "="*80)
     print("END OF EXPERIMENTS")
