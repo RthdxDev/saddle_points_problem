@@ -1,4 +1,3 @@
-from typing import Optional, Callable
 import numpy as np
 from abc import ABC, abstractmethod
 import time

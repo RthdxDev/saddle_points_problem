@@ -69,23 +69,22 @@ class SimpleVIProblem(OptimizationProblem):
         return f"Simple VI (F(x)=x, dim={self.dimension})"
     
 
-class AffineVIProblem(OptimizationProblem):
+class LinearVIProblem(OptimizationProblem):
     """
-    Affine Variational Inequality problem with F(x) = A x + b.
+    Linear Variational Inequality problem with F(x) = A x.
 
-    The solution is x* = -A^{-1} b.
+    The solution is x* = 0.
 
     Strongly monotone, Lipschitz continuous operator.
     """
-    def __init__(self, A: np.ndarray, b: np.ndarray):
+    def __init__(self, A: np.ndarray):
         self.A = A
-        self.b = b
         self.dimension = A.shape[0]
-        self.x_star = -np.linalg.solve(A, b)
+        self.x_star = np.zeros(self.dimension)
         self.eigvals = np.linalg.eigvalsh(A)
     
     def operator(self, z: np.ndarray) -> np.ndarray:
-        return self.A @ z + self.b
+        return self.A @ z
     
     def get_exact_solution(self) -> np.ndarray:
         return self.x_star.copy()
@@ -99,7 +98,7 @@ class AffineVIProblem(OptimizationProblem):
         return self.eigvals.min()
     
     def get_name(self) -> str:
-        return f"Affine VI (dim={self.dimension})"
+        return f"Linear VI (dim={self.dimension})"
 
 
 class BilinearSaddlePointProblem(OptimizationProblem):
@@ -163,9 +162,9 @@ class BilinearSaddlePointProblem(OptimizationProblem):
         return float(x.T @ self.A @ y)
     
 
-def create_random_affine_problem(n: int = 5, mu: float = 0.1, seed: Optional[int] = None) -> AffineVIProblem:
+def create_random_linear_problem(n: int = 5, mu: float = 0.1, seed: Optional[int] = None) -> LinearVIProblem:
     """
-    Create a random affine variational inequality problem.
+    Create a random linear variational inequality problem.
     
     Args:
         n: Problem dimension
@@ -173,7 +172,7 @@ def create_random_affine_problem(n: int = 5, mu: float = 0.1, seed: Optional[int
         seed: Random seed
         
     Returns:
-        AffineVIProblem instance
+        LinearVIProblem instance
     """
     if seed is not None:
         np.random.seed(seed)
@@ -181,10 +180,8 @@ def create_random_affine_problem(n: int = 5, mu: float = 0.1, seed: Optional[int
     M = np.random.randn(n, n)
     A = M.T @ M
     A = A / np.linalg.norm(A, 2) + mu * np.eye(n)
-    
-    b = np.random.randn(n)
-    
-    return AffineVIProblem(A, b)
+        
+    return LinearVIProblem(A)
 
 
 def create_random_bilinear_problem(n: int = 5, seed: Optional[int] = None) -> BilinearSaddlePointProblem:
