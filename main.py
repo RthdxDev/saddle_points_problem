@@ -107,7 +107,6 @@ def experiment_bilinear_saddle_point(
 	dimension: int = 10,
 	max_iterations: int = 100,
 	eps: float = 1e-6,
-	mu: float = 1
 	) -> List[OptimizationResult]:
 	"""
 	Experiment: Bilinear saddle point problem (matrix game).
@@ -117,17 +116,18 @@ def experiment_bilinear_saddle_point(
 	algorithms = [
 		ProjectionMethod(proj=product_simplex_projection),
 		ExtragradientMethod(proj=product_simplex_projection),
-		ExtragradientMethodWithRestarts(proj=product_simplex_projection)
 	]
 	
-	x0 = np.ones(2 * dimension)
+	x0 = np.zeros(2 * dimension)
+	x0[0] = 1
+	x0[dimension] = 1
 	
 	results = run_experiment(
 		problem=problem,
 		algorithms=algorithms,
 		x0=x0,
-		max_iterations=1000,
-		eps=1e-6,
+		max_iterations=max_iterations,
+		eps=eps,
 	)
 	
 	plot_convergence(results, title="Bilinear Saddle Point Problem")

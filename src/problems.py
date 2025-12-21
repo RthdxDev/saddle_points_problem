@@ -140,6 +140,15 @@ class BilinearSaddlePointProblem(OptimizationProblem):
         F_y = -self.A.T @ x
         
         return np.concatenate([F_x, F_y])
+
+    @property
+    def L(self) -> float:
+        return np.linalg.norm(self.A, 2).item()
+    
+    @property
+    def mu(self) -> float:
+        # Not strongly monotone
+        return 0.0
     
     def get_exact_solution(self) -> np.ndarray:
         return self.x_star.copy()
@@ -184,7 +193,7 @@ def create_random_linear_problem(n: int = 5, mu: float = 0.1, seed: Optional[int
     return LinearVIProblem(A)
 
 
-def create_random_bilinear_problem(n: int = 5, seed: Optional[int] = None) -> BilinearSaddlePointProblem:
+def create_random_bilinear_problem(n: int = 10, seed: Optional[int] = None) -> BilinearSaddlePointProblem:
     """
     Create a random bilinear saddle point problem.
     
@@ -198,7 +207,8 @@ def create_random_bilinear_problem(n: int = 5, seed: Optional[int] = None) -> Bi
     if seed is not None:
         np.random.seed(seed)
     
-    A = np.random.randn(n, n)
-    x_star = np.zeros(2 * n)
+    M = np.random.randn(n, n)
+    A = M - M.T
+    x_star = np.ones(2 * n) / n
     
     return BilinearSaddlePointProblem(A, x_star)
