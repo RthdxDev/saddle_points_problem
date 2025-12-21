@@ -69,22 +69,23 @@ class SimpleVIProblem(OptimizationProblem):
         return f"Simple VI (F(x)=x, dim={self.dimension})"
     
 
-class LinearVIProblem(OptimizationProblem):
+class AffineVIProblem(OptimizationProblem):
     """
-    Linear Variational Inequality problem with F(x) = A x.
+    Affine Variational Inequality problem with F(x) = A x + b.
 
     The solution is x* = 0.
 
     Strongly monotone, Lipschitz continuous operator.
     """
-    def __init__(self, A: np.ndarray):
+    def __init__(self, A: np.ndarray, b: Optional[np.ndarray] = None, x_star: Optional[np.ndarray] = None):
         self.A = A
+        self.b = b if b is not None else np.zeros(A.shape[0])
         self.dimension = A.shape[0]
-        self.x_star = np.zeros(self.dimension)
+        self.x_star = x_star if x_star is not None else np.zeros(self.dimension)
         self.eigvals = np.linalg.eigvalsh(A)
     
     def operator(self, z: np.ndarray) -> np.ndarray:
-        return self.A @ z
+        return self.A @ z + self.b
     
     def get_exact_solution(self) -> np.ndarray:
         return self.x_star.copy()
@@ -98,7 +99,7 @@ class LinearVIProblem(OptimizationProblem):
         return self.eigvals.min()
     
     def get_name(self) -> str:
-        return f"Linear VI (dim={self.dimension})"
+        return f"Affine VI (dim={self.dimension})"
 
 
 class BilinearSaddlePointProblem(OptimizationProblem):
@@ -117,11 +118,7 @@ class BilinearSaddlePointProblem(OptimizationProblem):
     def __init__(self, A: np.ndarray, x_star: Optional[np.ndarray] = None):
         self.A = A
         self.n = A.shape[0]
-        
-        if x_star is not None:
-            self.x_star = x_star.copy()
-        else:
-            self.x_star = np.zeros(2 * self.n)
+        self.x_star = x_star if x_star is not None else np.zeros(2 * self.n)
     
     def operator(self, z: np.ndarray) -> np.ndarray:
         """
@@ -171,7 +168,11 @@ class BilinearSaddlePointProblem(OptimizationProblem):
         return float(x.T @ self.A @ y)
     
 
-def create_random_linear_problem(n: int = 5, mu: float = 0.1, seed: Optional[int] = None) -> LinearVIProblem:
+def create_random_affine_problem(
+    n: int = 10, 
+    radius: float = 1,
+    mu: float = 1,
+    seed: Optional[int] = None) -> AffineVIProblem:
     """
     Create a random linear variational inequality problem.
     
@@ -179,6 +180,7 @@ def create_random_linear_problem(n: int = 5, mu: float = 0.1, seed: Optional[int
         n: Problem dimension
         mu: Strong monotonicity constant
         seed: Random seed
+        radius: Radius for scaling x_star
         
     Returns:
         LinearVIProblem instance
@@ -189,26 +191,48 @@ def create_random_linear_problem(n: int = 5, mu: float = 0.1, seed: Optional[int
     M = np.random.randn(n, n)
     A = M.T @ M
     A = A / np.linalg.norm(A, 2) + mu * np.eye(n)
-        
-    return LinearVIProblem(A)
 
+    x_star = np.random.randn(n)
+    x_star = x_star / np.linalg.norm(x_star) * radius if np.linalg.norm(x_star) > radius else x_star
 
-def create_random_bilinear_problem(n: int = 10, seed: Optional[int] = None) -> BilinearSaddlePointProblem:
-    """
-    Create a random bilinear saddle point problem.
+    b = -A @ x_star
     
-    Args:
-        n: Problem dimension
-        seed: Random seed
-        
-    Returns:
-        BilinearSaddlePointProblem instance
+    return AffineVIProblem(A, b, x_star)
+
+
+def create_rock_paper_scissors_game(n: int = 3) -> BilinearSaddlePointProblem:
+    """
+    Create a cyclic zero-sum game where uniform distribution is the Nash equilibrium.
+    
+    For n=3: Rock-Paper-Scissors
+    For general n: Cyclic game where strategy i beats strategy (i + 1) mod n
+    """
+    A = np.zeros((n, n))
+    for i in range(n):
+        for j in range(n):
+            if (i - j) % n == 1:
+                A[i, j] = 1  # i beats j
+            elif (j - i) % n == 1:
+                A[i, j] = -1  # j beats i
+    
+    x_star = np.ones(2 * n) / n
+    
+    return BilinearSaddlePointProblem(A, x_star)
+
+
+def create_doubly_stochastic_game(n: int = 10, seed: Optional[int] = None) -> BilinearSaddlePointProblem:
+    """
+    Generate a game where uniform distribution is Nash equilibrium.
+    
+    Create a matrix where all row sums and column sums are equal.
     """
     if seed is not None:
         np.random.seed(seed)
     
-    M = np.random.randn(n, n)
-    A = M - M.T
+    A_raw = np.random.randn(n, n)
+    A = A_raw - A_raw.mean(axis=1, keepdims=True)
+    A = A - A.mean(axis=0, keepdims=True)
+
     x_star = np.ones(2 * n) / n
-    
+
     return BilinearSaddlePointProblem(A, x_star)
