@@ -89,7 +89,7 @@ class OptimizationAlgorithm(ABC):
         self,
         problem: OptimizationProblem,
         x0: np.ndarray,
-        max_iterations: int = 1000,
+        max_iterations: int = 100,
         eps: float = 1e-6,
         **kwargs: dict
     ) -> OptimizationResult:
@@ -162,7 +162,7 @@ class ProjectionMethod(OptimizationAlgorithm):
         self,
         problem: OptimizationProblem,
         x0: np.ndarray,
-        max_iterations: int = 1000,
+        max_iterations: int = 100,
         eps: float = 1e-6,
         **kwargs
     ) -> OptimizationResult:
@@ -228,7 +228,7 @@ class ExtragradientMethod(OptimizationAlgorithm):
         self,
         problem: OptimizationProblem,
         x0: np.ndarray,
-        max_iterations: int = 1000,
+        max_iterations: int = 100,
         eps: float = 1e-6,
         **kwargs
     ) -> OptimizationResult:
@@ -298,7 +298,7 @@ class ExtragradientMethodWithRestarts(OptimizationAlgorithm):
         self,
         problem: OptimizationProblem,
         x0: np.ndarray,
-        max_iterations: int = 1000,
+        max_iterations: int = 100,
         eps: float = 1e-6,
         **kwargs
     ) -> OptimizationResult:
@@ -317,7 +317,7 @@ class ExtragradientMethodWithRestarts(OptimizationAlgorithm):
 
         N_restart = int(np.ceil(L / mu))
 
-        a = 1 / (2 * L)
+        a = 1 / L
 
         total_iterations = 0
 
@@ -362,10 +362,10 @@ class ExtragradientMethodWithRestarts(OptimizationAlgorithm):
                 break
 
             x_k = y_sum / inner_steps
-            x_history.append(x_k.copy())
-            convergence_errors.append(
-                self._compute_convergence_error(x_k, x_star)
-            )
+            # x_history.append(x_k.copy())
+            # convergence_errors.append(
+            #     self._compute_convergence_error(x_k, x_star)
+            # )
 
         computation_time = time.time() - start_time
 

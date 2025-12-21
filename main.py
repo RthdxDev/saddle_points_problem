@@ -1,9 +1,10 @@
 import numpy as np
-from typing import List
+from typing import List, Optional
 
 from src.problems import (
 	SimpleVIProblem,
 	BilinearSaddlePointProblem,
+	StronglyConvexGradientProblem,
 	OptimizationProblem,
 	OptimizationResult,
 	create_random_affine_problem,
@@ -29,7 +30,7 @@ def run_experiment(
 	problem: OptimizationProblem,
 	algorithms: List[OptimizationAlgorithm],
 	x0: np.ndarray,
-	max_iterations: int = 1000,
+	max_iterations: int = 100,
 	eps: float = 1e-6,
 ) -> List[OptimizationResult]:
 	results = []
@@ -102,6 +103,33 @@ def experiment_affine_vi(
 		eps=eps,
 	)
 	plot_convergence(results, title="Affine VI Problem")
+	print_comparison_table(results)
+	return results
+
+
+def experiment_strongly_convex_gradient(
+	dimension: int = 10,
+	max_iterations: int = 100,
+	eps: float = 1e-6,
+	mu: float = 1,
+	c: Optional[np.ndarray] = None,
+	radius: float = 1,
+	) -> List[OptimizationResult]:
+	problem = StronglyConvexGradientProblem(dimension=dimension, mu=mu, c=c, radius=radius)
+	algorithms = [
+		ProjectionMethod(proj=ball_projection),
+		ExtragradientMethod(proj=ball_projection),
+		ExtragradientMethodWithRestarts(proj=ball_projection)
+	]
+	x0 = np.ones(dimension)
+	results = run_experiment(
+		problem=problem,
+		algorithms=algorithms,
+		x0=x0,
+		max_iterations=max_iterations,
+		eps=eps,
+	)
+	plot_convergence(results, title="Strongly Convex Gradient Problem")
 	print_comparison_table(results)
 	return results
 
