@@ -361,7 +361,7 @@ def create_rock_paper_scissors_game(n: int = 3) -> BilinearSaddlePointProblem:
                 A[i, j] = -1  # j beats i
     
     x_star = np.ones(2 * n) / n
-    
+
     return BilinearSaddlePointProblem(A, x_star)
 
 
@@ -379,4 +379,11 @@ def create_doubly_stochastic_game(n: int = 10, seed: Optional[int] = 4269) -> Bi
         A = A / A.sum(axis=0, keepdims=True)
     
     x_star = np.ones(2 * n) / n
+    print('Condition number:', np.linalg.cond(A))
     return BilinearSaddlePointProblem(A, x_star)
+
+
+def create_well_conditioned_doubly_stochastic(n: int = 10, epsilon: float = 0.1) -> np.ndarray:
+    A = (1 - epsilon) * np.eye(n) + (epsilon / n) * np.ones((n, n))
+    print('Condition number:', np.linalg.cond(A))
+    return A

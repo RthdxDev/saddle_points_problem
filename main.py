@@ -10,6 +10,7 @@ from src.problems import (
 	create_random_affine_problem,
 	create_rock_paper_scissors_game,
 	create_doubly_stochastic_game,
+	create_well_conditioned_doubly_stochastic,
 )
 from src.algorithms import (
 	ProjectionMethod,
@@ -189,7 +190,23 @@ def experiment_doubly_stochastic_game(
 		eps=eps,
 	)
 	
-	plot_convergence(results, title="Doubly Stochastic Game")
+	plot_convergence(results, title="Doubly Stochastic Game (ill-conditioned)")
+	print_comparison_table(results)
+
+	problem_well_conditioned = BilinearSaddlePointProblem(
+	    A=create_well_conditioned_doubly_stochastic(n=dimension, epsilon=0.1),
+	    x_star=problem.x_star
+	)
+
+	results = run_experiment(
+		problem=problem_well_conditioned,
+		algorithms=algorithms,
+		x0=x0,
+		max_iterations=max_iterations,
+		eps=eps,
+	)
+	
+	plot_convergence(results, title="Doubly Stochastic Game (well-conditioned)")
 	print_comparison_table(results)
 
 	return results
