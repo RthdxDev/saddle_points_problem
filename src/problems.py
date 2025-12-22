@@ -317,7 +317,7 @@ def create_random_affine_problem(
     n: int = 10, 
     radius: float = 1,
     mu: float = 1,
-    seed: Optional[int] = None) -> AffineVIProblem:
+    seed: Optional[int] = 4269) -> AffineVIProblem:
     """
     Create a random linear variational inequality problem.
     
@@ -365,19 +365,18 @@ def create_rock_paper_scissors_game(n: int = 3) -> BilinearSaddlePointProblem:
     return BilinearSaddlePointProblem(A, x_star)
 
 
-def create_doubly_stochastic_game(n: int = 10, seed: Optional[int] = None) -> BilinearSaddlePointProblem:
+def create_doubly_stochastic_game(n: int = 10, seed: Optional[int] = 4269) -> BilinearSaddlePointProblem:
     """
-    Generate a game where uniform distribution is Nash equilibrium.
-    
-    Create a matrix where all row sums and column sums are equal.
+    Generate a doubly stochastic matrix using Sinkhorn's algorithm.
     """
     if seed is not None:
         np.random.seed(seed)
     
-    A_raw = np.random.randn(n, n)
-    A = A_raw - A_raw.mean(axis=1, keepdims=True)
-    A = A - A.mean(axis=0, keepdims=True)
-
+    A = np.random.rand(n, n) + 0.1
+    
+    for _ in range(100):
+        A = A / A.sum(axis=1, keepdims=True)
+        A = A / A.sum(axis=0, keepdims=True)
+    
     x_star = np.ones(2 * n) / n
-
     return BilinearSaddlePointProblem(A, x_star)
